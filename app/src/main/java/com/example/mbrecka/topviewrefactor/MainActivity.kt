@@ -23,6 +23,7 @@ import jp.wasabeef.recyclerview.animators.SlideInDownAnimator
 import jp.wasabeef.recyclerview.animators.SlideInUpAnimator
 import kotlin.math.sign
 
+// TODO: anchor na posledny item recyclera
 // TODO: recycler wrap height
 // TODO: rulebase
 // TODO: animacia itemu
