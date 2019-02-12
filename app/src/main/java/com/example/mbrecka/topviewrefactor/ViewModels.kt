@@ -10,62 +10,52 @@ interface TopViewViewModel {
     val text: ObservableField<String>
     val isVisible: Observable<Boolean>
     fun setVisible(isVisible: Boolean)
+    fun onDismiss()
 }
 
-class SignpostViewModel @Inject constructor() : ViewModel(), TopViewViewModel {
+abstract class BaseTopViewModel : ViewModel(), TopViewViewModel {
+    private val relay = BehaviorRelay.createDefault(false)
+
+    override fun setVisible(isVisible: Boolean) { relay.accept(isVisible) }
+
+    override val isVisible: Observable<Boolean> = relay
+
+    override fun onDismiss() {
+        // TODO: nejaka drsnejsia logika
+        setVisible(false)
+    }
+}
+
+class SignpostViewModel @Inject constructor() : BaseTopViewModel() {
 
     override val text = ObservableField<String>("Signpost")
 
-    private val relay = BehaviorRelay.create<Boolean>()
-
-    override fun setVisible(isVisible: Boolean) {
-        relay.accept(isVisible)
-    }
-    override val isVisible: Observable<Boolean> = relay
     //            Observable.interval(1000, TimeUnit.MILLISECONDS)
     //                    .map { it % 2L == 0L }
 }
 
-class IncidentViewModel @Inject constructor() : ViewModel(), TopViewViewModel {
+class IncidentViewModel @Inject constructor() : BaseTopViewModel() {
 
     override val text = ObservableField<String>("Incident")
 
-    private val relay = BehaviorRelay.create<Boolean>()
-
-    override fun setVisible(isVisible: Boolean) {
-        relay.accept(isVisible)
-    }
-    override val isVisible: Observable<Boolean> = relay
 //        Observable.interval(1500, TimeUnit.MILLISECONDS)
 //            .map { it % 2L == 0L }
 
 }
 
-class EndOfRouteViewModel @Inject constructor() : ViewModel(), TopViewViewModel {
+class EndOfRouteViewModel @Inject constructor() : BaseTopViewModel() {
 
     override val text = ObservableField<String>("EndOfRoute")
 
-    private val relay = BehaviorRelay.create<Boolean>()
-
-    override fun setVisible(isVisible: Boolean) {
-        relay.accept(isVisible)
-    }
-    override val isVisible: Observable<Boolean> = relay
 //        Observable.interval(2500, TimeUnit.MILLISECONDS)
 //            .map { it % 2L == 0L }
 
 }
 
-class OnlyVisibleViewModel @Inject constructor() : ViewModel(), TopViewViewModel {
+class OnlyVisibleViewModel @Inject constructor() : BaseTopViewModel() {
 
     override val text = ObservableField<String>("OnlyVisible")
 
-    private val relay = BehaviorRelay.create<Boolean>()
-
-    override fun setVisible(isVisible: Boolean) {
-        relay.accept(isVisible)
-    }
-    override val isVisible: Observable<Boolean> = relay
 //        Observable.interval(3000, TimeUnit.MILLISECONDS)
 //            .map { it % 2L == 0L }
 

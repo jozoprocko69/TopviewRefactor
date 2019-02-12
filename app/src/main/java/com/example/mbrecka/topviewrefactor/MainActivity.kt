@@ -23,9 +23,13 @@ import jp.wasabeef.recyclerview.animators.SlideInDownAnimator
 import jp.wasabeef.recyclerview.animators.SlideInUpAnimator
 import kotlin.math.sign
 
+// TODO: recycler wrap height
+// TODO: rulebase
+// TODO: animacia itemu
+// TODO: item nech sa vysunie popod predosly item, nie ponad
 
 class ViewModelRulebase {
-
+    fun applyRules(it: List<TopViewViewModel>): List<TopViewViewModel> = it
 }
 
 class MainActivity : AppCompatActivity() {
@@ -37,24 +41,31 @@ class MainActivity : AppCompatActivity() {
 
     val adapter = TopViewAdapter()
 
+    lateinit var binding : ActivityMainBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         AndroidInjection.inject(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        val binding = DataBindingUtil.setContentView<ActivityMainBinding>(this, R.layout.activity_main).apply {
-            recycler.adapter = adapter
-            recycler.layoutManager = LinearLayoutManager(this@MainActivity)
-            recycler.itemAnimator = SlideInDownAnimator()
-//            recycler.itemAnimator = SlideInDownAnimator(OvershootInterpolator(1f))
-        }
 
         val signpostViewModel = ViewModelProviders.of(this, viewModelFactory).get(SignpostViewModel::class.java)
         val incidentViewModel = ViewModelProviders.of(this, viewModelFactory).get(IncidentViewModel::class.java)
         val endOfRouteViewModel = ViewModelProviders.of(this, viewModelFactory).get(EndOfRouteViewModel::class.java)
         val onlyVisibleViewModel = ViewModelProviders.of(this, viewModelFactory).get(OnlyVisibleViewModel::class.java)
 
-        Observable.combineLatest(
+        binding = DataBindingUtil.setContentView<ActivityMainBinding>(this, R.layout.activity_main).apply {
+            recycler.adapter = adapter
+            recycler.layoutManager = LinearLayoutManager(this@MainActivity)
+            recycler.itemAnimator = SlideInDownAnimator()
+//            recycler.itemAnimator = SlideInDownAnimator(OvershootInterpolator(1f))
+
+            signpostSwitch.setOnCheckedChangeListener { _, isChecked -> signpostViewModel.setVisible(isChecked) }
+            incidentSwitch.setOnCheckedChangeListener { _, isChecked -> incidentViewModel.setVisible(isChecked) }
+            endOfRouteSwitch.setOnCheckedChangeListener { _, isChecked -> endOfRouteViewModel.setVisible(isChecked) }
+            onlyVisibleSwitch.setOnCheckedChangeListener { _, isChecked -> onlyVisibleViewModel.setVisible(isChecked) }
+        }
+
+        val nevyskakujlintdpc = Observable.combineLatest(
             signpostViewModel.isVisible,
             incidentViewModel.isVisible,
             endOfRouteViewModel.isVisible,
@@ -71,10 +82,13 @@ class MainActivity : AppCompatActivity() {
 
                 list
             }
+            .map { viewModelRulebase.applyRules(it) }
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({
                 adapter.submitList(it)
                 Log.d("matej", "${adapter.itemCount}")
+            }, {
+                Log.e("matej", "onCreate: ", it)
             })
 
         adapter.submitList(listOf(signpostViewModel, incidentViewModel, endOfRouteViewModel, onlyVisibleViewModel))
