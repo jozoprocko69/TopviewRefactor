@@ -80,6 +80,8 @@ class TopViewAdapter : RecyclerView.Adapter<TopViewHolder>() {
         }
     }
 
+    fun isDismissable(viewHolder: RecyclerView.ViewHolder) = data[viewHolder.adapterPosition].isDismissable
+
     fun foo(viewHolder: RecyclerView.ViewHolder) {
         data[viewHolder.adapterPosition].onDismiss()
     }

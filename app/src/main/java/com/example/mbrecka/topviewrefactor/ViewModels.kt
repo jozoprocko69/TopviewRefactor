@@ -11,6 +11,7 @@ interface TopViewViewModel {
     val isVisible: Observable<Boolean>
     fun setVisible(isVisible: Boolean)
     fun onDismiss()
+    val isDismissable : Boolean
 }
 
 abstract class BaseTopViewModel : ViewModel(), TopViewViewModel {
@@ -24,6 +25,9 @@ abstract class BaseTopViewModel : ViewModel(), TopViewViewModel {
         // TODO: nejaka drsnejsia logika
         setVisible(false)
     }
+
+    override val isDismissable: Boolean
+        get() = true
 }
 
 class SignpostViewModel @Inject constructor() : BaseTopViewModel() {
@@ -32,6 +36,9 @@ class SignpostViewModel @Inject constructor() : BaseTopViewModel() {
 
     //            Observable.interval(1000, TimeUnit.MILLISECONDS)
     //                    .map { it % 2L == 0L }
+
+    override val isDismissable: Boolean
+        get() = false
 }
 
 class IncidentViewModel @Inject constructor() : BaseTopViewModel() {

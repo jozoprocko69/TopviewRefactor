@@ -2,6 +2,7 @@ package com.example.mbrecka.topviewrefactor
 
 import android.os.Bundle
 import android.util.Log
+import android.view.animation.AccelerateDecelerateInterpolator
 
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProviders
@@ -19,12 +20,8 @@ import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.plusAssign
 import jp.wasabeef.recyclerview.animators.SlideInDownAnimator
 import java.lang.RuntimeException
+import kotlin.random.Random
 
-
-// TODO: anchor na posledny item recyclera
-// TODO: recycler wrap height
-// TODO: rulebase
-// TODO: animacia itemu
 // TODO: item nech sa vysunie popod predosly item, nie ponad
 
 class ViewModelRulebase {
@@ -48,6 +45,7 @@ class ViewModelRulebase {
         val vms = it.toList()
 
         val mappedVms = vms
+            .asSequence()
             .filter { it.second }
             .associate {
                 it.first.toEnum() to it.second
@@ -100,7 +98,8 @@ class MainActivity : AppCompatActivity() {
 
         binding = DataBindingUtil.setContentView<ActivityMainBinding>(this, R.layout.activity_main).apply {
             recycler.adapter = adapter
-            recycler.itemAnimator = SlideInDownAnimator()
+            recycler.itemAnimator = SlideInDownAnimator(AccelerateDecelerateInterpolator())
+            recycler.setChildDrawingOrderCallback { childCount, i -> childCount - (i + 1) } // reverse drawing order
             recycler.layoutManager = object : LinearLayoutManager(this@MainActivity) {
                 override fun canScrollHorizontally(): Boolean {
                     return false
@@ -119,6 +118,14 @@ class MainActivity : AppCompatActivity() {
                     return false
                 }
 
+                override fun getSwipeDirs(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder): Int {
+                    return if(adapter.isDismissable(viewHolder)){
+                        ItemTouchHelper.LEFT
+                    }else{
+                        0
+                    }
+                }
+
                 override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                     adapter.foo(viewHolder)
                 }
@@ -135,8 +142,11 @@ class MainActivity : AppCompatActivity() {
 
             onlyVisibleSwitch.setOnCheckedChangeListener { _, isChecked -> onlyVisibleViewModel.setVisible(isChecked) }
             disposable += onlyVisibleViewModel.isVisible.subscribe { onlyVisibleSwitch.isChecked = it }
-        }
 
+            fab.setOnClickListener {
+                it.alpha = Random.nextFloat()
+            }
+        }
 
         val visibilityStreams = listOf(
             signpostViewModel,
@@ -162,8 +172,6 @@ class MainActivity : AppCompatActivity() {
                     }, {
                         Log.e("matej", "onCreate: ", it)
                     })
-
-//        adapter.submitList(listOf(signpostViewModel, incidentViewModel, endOfRouteViewModel, onlyVisibleViewModel))
     }
 }
 
