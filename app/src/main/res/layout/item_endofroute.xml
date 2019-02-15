@@ -12,6 +12,7 @@
     </data>
 
     <LinearLayout
+            android:id="@+id/endofroutte"
             android:padding="16dp"
             android:background="#ff0000"
             android:orientation="vertical"

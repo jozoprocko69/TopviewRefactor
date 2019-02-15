@@ -2,7 +2,6 @@ package com.example.mbrecka.topviewrefactor
 
 import android.os.Bundle
 import android.util.Log
-import android.view.animation.AnimationUtils
 
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProviders
@@ -14,14 +13,13 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.mbrecka.topviewrefactor.databinding.ActivityMainBinding
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.functions.Function4
-import kotlinx.android.synthetic.main.activity_main.*
-import android.view.animation.AnimationUtils.loadLayoutAnimation
-import android.view.animation.LayoutAnimationController
-import android.view.animation.OvershootInterpolator
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.RecyclerView
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.rxkotlin.plusAssign
 import jp.wasabeef.recyclerview.animators.SlideInDownAnimator
-import jp.wasabeef.recyclerview.animators.SlideInUpAnimator
-import kotlin.math.sign
+import java.lang.RuntimeException
+
 
 // TODO: anchor na posledny item recyclera
 // TODO: recycler wrap height
@@ -30,7 +28,51 @@ import kotlin.math.sign
 // TODO: item nech sa vysunie popod predosly item, nie ponad
 
 class ViewModelRulebase {
-    fun applyRules(it: List<TopViewViewModel>): List<TopViewViewModel> = it
+
+    private val hiddenBy = mapOf(
+        TopVm.SIGNPOST to listOf(TopVm.ONLY_VISIBLE),
+        TopVm.INCIDENT to listOf(TopVm.ONLY_VISIBLE, TopVm.END_OF_ROUTE),
+        TopVm.END_OF_ROUTE to listOf(TopVm.ONLY_VISIBLE),
+        TopVm.ONLY_VISIBLE to emptyList()
+    )
+
+    private fun isAllowedByState(viewModel: TopViewViewModel, vms: Map<TopVm, Boolean>): Boolean {
+        val hiddenBy = hiddenBy[viewModel.toEnum()]!!
+        val currentState = vms.keys
+
+        return hiddenBy.intersect(currentState).isEmpty()
+    }
+
+    fun applyRules(it: Map<TopViewViewModel, Boolean>): List<TopViewViewModel> {
+
+        val vms = it.toList()
+
+        val mappedVms = vms
+            .filter { it.second }
+            .associate {
+                it.first.toEnum() to it.second
+            }
+
+        return vms
+            .asSequence()
+            .filter { it.second && isAllowedByState(it.first, mappedVms) }
+            .map { it.first }
+            .toList()
+    }
+
+    private fun TopViewViewModel.toEnum(): TopVm {
+        return when (this) {
+            is SignpostViewModel -> TopVm.SIGNPOST
+            is IncidentViewModel -> TopVm.INCIDENT
+            is EndOfRouteViewModel -> TopVm.END_OF_ROUTE
+            is OnlyVisibleViewModel -> TopVm.ONLY_VISIBLE
+            else -> throw RuntimeException()
+        }
+    }
+
+    enum class TopVm {
+        SIGNPOST, INCIDENT, END_OF_ROUTE, ONLY_VISIBLE
+    }
 }
 
 class MainActivity : AppCompatActivity() {
@@ -42,7 +84,9 @@ class MainActivity : AppCompatActivity() {
 
     val adapter = TopViewAdapter()
 
-    lateinit var binding : ActivityMainBinding
+    lateinit var binding: ActivityMainBinding
+
+    private val disposable = CompositeDisposable()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AndroidInjection.inject(this)
@@ -56,43 +100,70 @@ class MainActivity : AppCompatActivity() {
 
         binding = DataBindingUtil.setContentView<ActivityMainBinding>(this, R.layout.activity_main).apply {
             recycler.adapter = adapter
-            recycler.layoutManager = LinearLayoutManager(this@MainActivity)
             recycler.itemAnimator = SlideInDownAnimator()
-//            recycler.itemAnimator = SlideInDownAnimator(OvershootInterpolator(1f))
+            recycler.layoutManager = object : LinearLayoutManager(this@MainActivity) {
+                override fun canScrollHorizontally(): Boolean {
+                    return false
+                }
+
+                override fun canScrollVertically(): Boolean {
+                    return false
+                }
+            }
+            ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
+                override fun onMove(
+                    recyclerView: RecyclerView,
+                    viewHolder: RecyclerView.ViewHolder,
+                    target: RecyclerView.ViewHolder
+                ): Boolean {
+                    return false
+                }
+
+                override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                    adapter.foo(viewHolder)
+                }
+            }).attachToRecyclerView(recycler)
 
             signpostSwitch.setOnCheckedChangeListener { _, isChecked -> signpostViewModel.setVisible(isChecked) }
+            disposable += signpostViewModel.isVisible.subscribe { signpostSwitch.isChecked = it }
+
             incidentSwitch.setOnCheckedChangeListener { _, isChecked -> incidentViewModel.setVisible(isChecked) }
+            disposable += incidentViewModel.isVisible.subscribe { incidentSwitch.isChecked = it }
+
             endOfRouteSwitch.setOnCheckedChangeListener { _, isChecked -> endOfRouteViewModel.setVisible(isChecked) }
+            disposable += endOfRouteViewModel.isVisible.subscribe { endOfRouteSwitch.isChecked = it }
+
             onlyVisibleSwitch.setOnCheckedChangeListener { _, isChecked -> onlyVisibleViewModel.setVisible(isChecked) }
+            disposable += onlyVisibleViewModel.isVisible.subscribe { onlyVisibleSwitch.isChecked = it }
         }
 
-        val nevyskakujlintdpc = Observable.combineLatest(
-            signpostViewModel.isVisible,
-            incidentViewModel.isVisible,
-            endOfRouteViewModel.isVisible,
-            onlyVisibleViewModel.isVisible,
-            Function4 { a: Boolean, b: Boolean, c: Boolean, d: Boolean ->
-                Foo(signpostViewModel to a, incidentViewModel to b, endOfRouteViewModel to c, onlyVisibleViewModel to d)
-            })
-            .map<List<TopViewViewModel>> {
-                val list = mutableListOf<TopViewViewModel>()
-                if (it.a.second) list.add(it.a.first)
-                if (it.b.second) list.add(it.b.first)
-                if (it.c.second) list.add(it.c.first)
-                if (it.d.second) list.add(it.d.first)
 
-                list
-            }
-            .map { viewModelRulebase.applyRules(it) }
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({
-                adapter.submitList(it)
-                Log.d("matej", "${adapter.itemCount}")
-            }, {
-                Log.e("matej", "onCreate: ", it)
-            })
+        val visibilityStreams = listOf(
+            signpostViewModel,
+            incidentViewModel,
+            endOfRouteViewModel,
+            onlyVisibleViewModel
+        )
 
-        adapter.submitList(listOf(signpostViewModel, incidentViewModel, endOfRouteViewModel, onlyVisibleViewModel))
+        disposable +=
+                Observable.combineLatest(visibilityStreams.map { it.isVisible.startWith(false) }) {
+                    linkedMapOf<TopViewViewModel, Boolean>()
+                        .apply {
+                            it.forEachIndexed { index, b ->
+                                this[visibilityStreams[index]] = b as Boolean
+                            }
+                        }
+                }
+                    .map { viewModelRulebase.applyRules(it) }
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe({
+                        adapter.submitList(it)
+                        Log.d("matej", "${adapter.itemCount}")
+                    }, {
+                        Log.e("matej", "onCreate: ", it)
+                    })
+
+//        adapter.submitList(listOf(signpostViewModel, incidentViewModel, endOfRouteViewModel, onlyVisibleViewModel))
     }
 }
 

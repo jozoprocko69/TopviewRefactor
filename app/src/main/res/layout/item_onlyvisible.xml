@@ -12,6 +12,7 @@
     </data>
 
     <LinearLayout
+            android:id="@+id/onlyvisible"
             android:padding="16dp"
             android:background="#00ff00"
             android:orientation="vertical"

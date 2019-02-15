@@ -16,7 +16,8 @@
         <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fab"
                 app:layout_anchor="@id/recycler"
-                app:layout_behavior="com.example.mbrecka.topviewrefactor.TopViewBehavior"
+                android:layout_margin="16dp"
+                app:layout_behavior="com.example.mbrecka.topviewrefactor.AnchoredToTopViewBehavior"
                 android:src="@drawable/ic_launcher_foreground"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>

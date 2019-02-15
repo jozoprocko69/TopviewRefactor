@@ -79,6 +79,10 @@ class TopViewAdapter : RecyclerView.Adapter<TopViewHolder>() {
             override fun getNewListSize() = viewmodels.size
         }
     }
+
+    fun foo(viewHolder: RecyclerView.ViewHolder) {
+        data[viewHolder.adapterPosition].onDismiss()
+    }
 }
 
 sealed class TopViewHolder(val binding: ViewDataBinding) : RecyclerView.ViewHolder(binding.root) {init {

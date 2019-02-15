@@ -12,6 +12,7 @@
     </data>
 
     <LinearLayout
+            android:id="@+id/signpost"
             android:padding="16dp"
             android:background="#0000ff"
             android:orientation="vertical"

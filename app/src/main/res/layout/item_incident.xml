@@ -12,6 +12,7 @@
     </data>
 
     <LinearLayout
+            android:id="@+id/incident"
             android:padding="16dp"
             android:background="#000000"
             android:orientation="vertical"
